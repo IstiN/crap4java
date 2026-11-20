@@ -29,7 +29,7 @@ class CoverageRunnerTest {
         RecordingExecutor executor = new RecordingExecutor(0);
         CoverageRunner runner = new CoverageRunner(executor);
 
-        runner.generateCoverage(tempDir);
+        runner.generateCoverage(tempDir, BuildSystem.MAVEN);
 
         assertFalse(Files.exists(jacocoDir));
         assertFalse(Files.exists(exec));
@@ -48,9 +48,37 @@ class CoverageRunnerTest {
         CoverageRunner runner = new CoverageRunner(executor);
 
         IllegalStateException ex = assertThrows(IllegalStateException.class,
-                () -> runner.generateCoverage(tempDir));
+                () -> runner.generateCoverage(tempDir, BuildSystem.MAVEN));
 
         assertEquals("Coverage command failed with exit 2", ex.getMessage());
+    }
+
+    @Test
+    void deletesStaleGradleCoverageAndUsesRootWrapper() throws Exception {
+        Path wrapper = Files.createFile(tempDir.resolve("gradlew"));
+        Path module = Files.createDirectories(tempDir.resolve("module"));
+        Path report = Files.createDirectories(module.resolve("build/reports/jacoco/test"));
+        Files.writeString(report.resolve("jacocoTestReport.xml"), "stale");
+        Path exec = module.resolve("build/jacoco/test.exec");
+        Files.createDirectories(exec.getParent());
+        Files.writeString(exec, "stale");
+        RecordingExecutor executor = new RecordingExecutor(0);
+
+        new CoverageRunner(executor).generateCoverage(module, BuildSystem.GRADLE);
+
+        assertFalse(Files.exists(report));
+        assertFalse(Files.exists(exec));
+        assertEquals(List.of(wrapper.toString(), "test", "jacocoTestReport"), executor.commands.get(0));
+        assertEquals(module, executor.directories.get(0));
+    }
+
+    @Test
+    void usesInstalledGradleWhenWrapperIsMissing() throws Exception {
+        RecordingExecutor executor = new RecordingExecutor(0);
+
+        new CoverageRunner(executor).generateCoverage(tempDir, BuildSystem.GRADLE);
+
+        assertEquals(List.of("gradle", "test", "jacocoTestReport"), executor.commands.get(0));
     }
 
     private static final class RecordingExecutor implements CommandExecutor {
