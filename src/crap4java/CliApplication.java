@@ -54,8 +54,9 @@ final class CliApplication {
         List<MethodMetrics> metrics = new ArrayList<>();
         for (Map.Entry<Path, List<Path>> entry : groupByModuleRoot(filesToAnalyze).entrySet()) {
             Path moduleRoot = entry.getKey();
-            Path jacocoXml = moduleRoot.resolve("target/site/jacoco/jacoco.xml");
-            coverageRunner.generateCoverage(moduleRoot);
+            BuildSystem buildSystem = BuildSystem.forModule(moduleRoot);
+            Path jacocoXml = buildSystem.jacocoXml(moduleRoot);
+            coverageRunner.generateCoverage(moduleRoot, buildSystem);
             if (!Files.exists(jacocoXml)) {
                 err.println("Warning: JaCoCo XML not found at " + jacocoXml + ". Coverage will be N/A.");
             }
@@ -111,7 +112,7 @@ final class CliApplication {
         Path normalizedWorkspaceRoot = workspaceRoot.normalize();
         Path current = Files.isDirectory(file) ? file.normalize() : file.normalize().getParent();
         while (current != null && current.startsWith(normalizedWorkspaceRoot)) {
-            if (Files.exists(current.resolve("pom.xml"))) {
+            if (BuildSystem.MAVEN.matches(current) || BuildSystem.GRADLE.matches(current)) {
                 return current;
             }
             current = current.getParent();

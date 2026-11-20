@@ -14,19 +14,33 @@ final class CoverageRunner {
         this.executor = executor;
     }
 
-    void generateCoverage(Path projectRoot) throws Exception {
-        deleteIfExists(projectRoot.resolve("target/site/jacoco"));
-        deleteIfExists(projectRoot.resolve("target/jacoco.exec"));
-
-        int exit = executor.run(List.of(
-                "mvn", "-q",
-                "org.jacoco:jacoco-maven-plugin:0.8.12:prepare-agent",
-                "test",
-                "org.jacoco:jacoco-maven-plugin:0.8.12:report"
-        ), projectRoot);
+    void generateCoverage(Path projectRoot, BuildSystem buildSystem) throws Exception {
+        for (String stalePath : buildSystem.staleCoveragePaths) {
+            deleteIfExists(projectRoot.resolve(stalePath));
+        }
+        List<String> command = buildSystem == BuildSystem.GRADLE
+                ? gradleCommand(projectRoot)
+                : List.of(
+                        "mvn", "-q",
+                        "org.jacoco:jacoco-maven-plugin:0.8.12:prepare-agent",
+                        "test",
+                        "org.jacoco:jacoco-maven-plugin:0.8.12:report");
+        int exit = executor.run(command, projectRoot);
         if (exit != 0) {
             throw new IllegalStateException("Coverage command failed with exit " + exit);
         }
+    }
+
+    private static List<String> gradleCommand(Path moduleRoot) {
+        Path current = moduleRoot;
+        while (current != null) {
+            Path wrapper = current.resolve("gradlew");
+            if (Files.isRegularFile(wrapper)) {
+                return List.of(wrapper.toString(), "test", "jacocoTestReport");
+            }
+            current = current.getParent();
+        }
+        return List.of("gradle", "test", "jacocoTestReport");
     }
 
     private void deleteIfExists(Path path) throws IOException {

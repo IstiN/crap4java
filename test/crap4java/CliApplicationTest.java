@@ -152,4 +152,50 @@ class CliApplicationTest {
 
         assertEquals(moduleRoot, module);
     }
+
+      @Test
+      void moduleRootForFindsGradleKotlinModule() throws Exception {
+        Path moduleRoot = tempDir.resolve("module");
+        Path source = moduleRoot.resolve("src/main/java/Sample.java");
+        Files.createDirectories(source.getParent());
+        Files.writeString(moduleRoot.resolve("build.gradle.kts"), "");
+        Files.writeString(source, "class Sample {}");
+
+        assertEquals(moduleRoot, CliApplication.moduleRootFor(tempDir, source));
+        assertEquals(BuildSystem.GRADLE, BuildSystem.forModule(moduleRoot));
+      }
+
+    @Test
+    void explicitGradleFileUsesModuleJacocoReport() throws Exception {
+        Path moduleRoot = tempDir.resolve("module");
+        Path source = moduleRoot.resolve("src/main/java/demo/Sample.java");
+        Files.createDirectories(source.getParent());
+        Files.writeString(moduleRoot.resolve("build.gradle"), "");
+        Files.writeString(source, "package demo;\nclass Sample {\n int alpha() { return 1; }\n}\n");
+        Path jacocoXml = moduleRoot.resolve("build/reports/jacoco/test/jacocoTestReport.xml");
+        CoverageRunner coverageRunner = new CoverageRunner((command, directory) -> {
+            Files.createDirectories(jacocoXml.getParent());
+            Files.writeString(jacocoXml, """
+                    <report name="demo">
+                      <package name="demo">
+                        <class name="demo/Sample" sourcefilename="Sample.java">
+                          <method name="alpha" desc="()I" line="3">
+                            <counter type="INSTRUCTION" missed="0" covered="1"/>
+                          </method>
+                        </class>
+                      </package>
+                    </report>
+                    """);
+            return 0;
+        });
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        ByteArrayOutputStream err = new ByteArrayOutputStream();
+
+        int exit = new CliApplication(tempDir, new PrintStream(out), new PrintStream(err), coverageRunner)
+                .execute(new String[]{"module/src/main/java/demo/Sample.java"});
+
+        assertEquals(0, exit);
+        assertTrue(out.toString().contains("100.0%"));
+        assertFalse(err.toString().contains("Warning: JaCoCo XML not found"));
+    }
 }
