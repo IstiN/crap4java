@@ -11,6 +11,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class CoverageRunnerTest {
 
@@ -35,9 +36,9 @@ class CoverageRunnerTest {
         assertFalse(Files.exists(exec));
         assertEquals(List.of(
                 "mvn", "-q",
-                "org.jacoco:jacoco-maven-plugin:0.8.12:prepare-agent",
+                "org.jacoco:jacoco-maven-plugin:0.8.14:prepare-agent",
                 "test",
-                "org.jacoco:jacoco-maven-plugin:0.8.12:report"
+                "org.jacoco:jacoco-maven-plugin:0.8.14:report"
         ), executor.commands.get(0));
         assertEquals(tempDir, executor.directories.get(0));
     }
@@ -96,5 +97,17 @@ class CoverageRunnerTest {
             directories.add(directory);
             return exitCode;
         }
+    }
+
+    @Test
+    void jacocoVersionMatchesPomAndSupportsJava25() throws Exception {
+        String pom = Files.readString(Path.of("pom.xml"));
+        assertTrue(pom.contains("<jacoco.version>" + CoverageRunner.JACOCO_VERSION + "</jacoco.version>"),
+                "pom.xml jacoco.version must match CoverageRunner.JACOCO_VERSION");
+        String[] parts = CoverageRunner.JACOCO_VERSION.split("\\.");
+        int minor = Integer.parseInt(parts[1]);
+        int patch = Integer.parseInt(parts[2]);
+        assertTrue(minor > 8 || (minor == 8 && patch >= 14),
+                "JaCoCo >= 0.8.14 is required for Java 25 (class file 69)");
     }
 }

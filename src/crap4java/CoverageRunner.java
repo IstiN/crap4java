@@ -14,6 +14,9 @@ final class CoverageRunner {
         this.executor = executor;
     }
 
+    // Keep in sync with <jacoco.version> in pom.xml; 0.8.14+ supports Java 25 (class file 69).
+    static final String JACOCO_VERSION = "0.8.14";
+
     void generateCoverage(Path projectRoot, BuildSystem buildSystem) throws Exception {
         for (String stalePath : buildSystem.staleCoveragePaths) {
             deleteIfExists(projectRoot.resolve(stalePath));
@@ -22,9 +25,9 @@ final class CoverageRunner {
                 ? gradleCommand(projectRoot)
                 : List.of(
                         "mvn", "-q",
-                        "org.jacoco:jacoco-maven-plugin:0.8.12:prepare-agent",
+                        "org.jacoco:jacoco-maven-plugin:" + JACOCO_VERSION + ":prepare-agent",
                         "test",
-                        "org.jacoco:jacoco-maven-plugin:0.8.12:report");
+                        "org.jacoco:jacoco-maven-plugin:" + JACOCO_VERSION + ":report");
         int exit = executor.run(command, projectRoot);
         if (exit != 0) {
             throw new IllegalStateException("Coverage command failed with exit " + exit);

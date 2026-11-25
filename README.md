@@ -16,7 +16,7 @@ On each run it deletes stale coverage artifacts, runs coverage, then analyzes th
 
 For each selected module, the build system is detected from its build file.
 
-- Maven: delete stale coverage, run `mvn -q org.jacoco:jacoco-maven-plugin:0.8.12:prepare-agent test org.jacoco:jacoco-maven-plugin:0.8.12:report`, and read `target/site/jacoco/jacoco.xml`.
+- Maven: delete stale coverage, run `mvn -q org.jacoco:jacoco-maven-plugin:0.8.14:prepare-agent test org.jacoco:jacoco-maven-plugin:0.8.14:report`, and read `target/site/jacoco/jacoco.xml`.
 - Gradle: delete stale coverage, run `test jacocoTestReport` using the nearest Gradle wrapper (or `gradle` on PATH), and read `build/reports/jacoco/test/jacocoTestReport.xml`.
 
 Gradle projects must apply the JaCoCo plugin and enable XML output for `jacocoTestReport`.
